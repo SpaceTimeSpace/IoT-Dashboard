@@ -1,0 +1,21 @@
+# Device certificates (NEVER commit)
+*.pem
+*.crt
+*.key
+_certs/
+certs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Build artifacts
+*.zip

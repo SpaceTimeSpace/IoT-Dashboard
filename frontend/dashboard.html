@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Printer Telemetry Dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#f4f6f8; margin:0; padding:24px; }
+    h1 { margin:0 0 8px; font-size:24px; }
+    .meta { color:#555; margin-bottom:20px; font-size:14px; }
+    .card { background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,.08); overflow:hidden; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th, td { padding:12px 14px; text-align:left; border-bottom:1px solid #eee; }
+    th { background:#f8fafc; font-weight:600; }
+    tr.anomaly { background:#fff5f5; }
+    tr.anomaly td { color:#b42318; font-weight:600; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; }
+    .badge.ok { background:#ecfdf3; color:#027a48; }
+    .badge.warn { background:#fef3f2; color:#b42318; }
+    .error { color:#b42318; margin-top:12px; }
+  </style>
+</head>
+<body>
+  <h1>Printer Telemetry Dashboard</h1>
+  <div class="meta">
+    Device: <strong id="device-id">printer-001</strong> |
+    Showing latest <strong id="limit">30</strong> readings |
+    Auto-refresh: <strong>5s</strong>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Time (UTC)</th>
+          <th>Nozzle °C</th>
+          <th>Bed °C</th>
+          <th>Vibration</th>
+          <th>Status</th>
+          <th>Anomaly</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="7">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="error" class="error"></div>
+
+  <script>
+    const API_BASE = "https://YOUR-API-ID.execute-api.us-east-1.amazonaws.com";
+    const DEVICE_ID = "printer-001";
+    const LIMIT = 30;
+    const REFRESH_MS = 5000;
+
+    async function loadReadings() {
+      const url = `${API_BASE}/readings?deviceId=${encodeURIComponent(DEVICE_ID)}&limit=${LIMIT}`;
+      const errorEl = document.getElementById("error");
+      const tbody = document.getElementById("rows");
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Request failed: " + res.status);
+        const items = await res.json();
+        errorEl.textContent = "";
+
+        if (!items.length) {
+          tbody.innerHTML = '<tr><td colspan="7">No readings yet. Run the simulator to generate data.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = items.map(item => {
+          const isAnomaly = item.isAnomaly === true;
+          const badge = isAnomaly
+            ? '<span class="badge warn">ANOMALY</span>'
+            : '<span class="badge ok">OK</span>';
+          return `
+            <tr class="${isAnomaly ? "anomaly" : ""}">
+              <td>${item.timestamp || ""}</td>
+              <td>${item.nozzleTempC ?? ""}</td>
+              <td>${item.bedTempC ?? ""}</td>
+              <td>${item.vibration ?? ""}</td>
+              <td>${item.status || ""}</td>
+              <td>${badge}</td>
+              <td>${item.reason || ""}</td>
+            </tr>
+          `;
+        }).join("");
+      } catch (err) {
+        errorEl.textContent = "Failed to load readings: " + err.message;
+      }
+    }
+
+    loadReadings();
+    setInterval(loadReadings, REFRESH_MS);
+  </script>
+</body>
+</html>
